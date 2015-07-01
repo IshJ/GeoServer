@@ -9,7 +9,7 @@ from django.db import models
 # Create your models here.
 class QuestionTag(models.Model):
     '''
-    Tag for grouping questions.
+    Tag for grouping questionsm
     '''
     word = models.CharField(max_length=16)
     
@@ -17,7 +17,16 @@ class QuestionTag(models.Model):
         return self.word
 
 
-class Word(models.Model):
+class ChoiceWord(models.Model):
+    text = models.CharField(max_length=32)
+    index = models.IntegerField()
+    choice = models.ForeignKey('questions.Choice', related_name='words')
+
+    def __unicode__(self):
+        return self.text
+
+
+class SentenceWord(models.Model):
     text = models.CharField(max_length=32)
     index = models.IntegerField()
     sentence = models.ForeignKey('questions.Sentence', related_name='words')
@@ -47,6 +56,24 @@ class Choice(models.Model):
     
     def __unicode__(self):
         return "%d-%d" % (self.question.pk, self.number)
+
+
+class SentenceExpression(models.Model):
+    text = models.CharField(max_length=64)
+    index = models.CharField(max_length=32)
+    sentence = models.ForeignKey('questions.Sentence', related_name='expressions')
+
+    def __unicode__(self):
+        return unicode(self.sentence) + "-" + self.index
+
+
+class ChoiceExpression(models.Model):
+    text = models.CharField(max_length=64)
+    index = models.CharField(max_length=32)
+    choice = models.ForeignKey('questions.Choice', related_name='expressions')
+
+    def __unicode__(self):
+        return unicode(self.choice) + "-" + self.index
 
 
 def get_upload_path(instance, filename):
@@ -86,6 +113,7 @@ class Question(models.Model):
             diagram_url = request.build_absolute_uri(self.diagram.url)
         return {'pk': self.pk,
                 'text': self.text,
+                'words': {sentence.index: {word.index: word.text for word in sentence.words.all()} for sentence in self.sentences.all()},
                 'diagram_url': diagram_url,
                 'has_choices': self.has_choices,
                 'valid': self.valid,

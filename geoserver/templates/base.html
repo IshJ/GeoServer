@@ -35,7 +35,7 @@
               <ul class="nav navbar-nav">
                   <li {% block questions_tab %}{% endblock %}><a href="{% url 'questions-list' 'all' %}">Questions</a></li>
                   <li {% block labels_tab %}{% endblock %}><a href="{% url 'labels-list' 'all' %}">Labels</a></li>
-                  <li {% block semantics_tab %}{% endblock %}><a href="#contact">Semantics</a></li>
+                  <li {% block semantics_tab %}{% endblock %}><a href="{% url 'semantics-list' 'all' %}">Semantics</a></li>
               </ul>
           </div><!--/.nav-collapse -->
       </div>
@@ -48,6 +48,7 @@
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="{% static "jquery/jquery-2.1.3.min.js" %}"></script>
+    <script src="{% static "jquery/jquery.cookie.js" %}"></script>
     <script src="{% static "bootstrap/js/bootstrap.min.js" %}"></script>
     {%  block script %}{% endblock %}
   </body>
