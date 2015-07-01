@@ -38,9 +38,6 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'questions',
-    'deptrees',
-    'characters',
-    'ocrs',
     'labels',
     'semantics',
 )
@@ -53,6 +50,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
+
 
 ROOT_URLCONF = 'geoserver.urls.local'
 
