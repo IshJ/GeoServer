@@ -17,6 +17,7 @@ sudo pip install awscli
 echo "create database geodb" | mysql -u root
 
 sudo su ai2service <<'EOF'
+aws configure
 cd ~
 wget https://github.com/Itseez/opencv/archive/3.0.0.zip
 unzip 3.0.0.zip
@@ -37,13 +38,15 @@ ln -s /opt/ai2ools/var/ghro/allenai/geosolver geosolver
 ghro EquationTree
 ln -s /opt/ai2ools/var/ghro/allenai/EquationTree EquationTree
 cd GeoServer/geoserver
-aws configure
 # https://github.com/allenai/ai2ools/blob/master/lib/bash/helpers.sh
-aws s3 cp s3://ai2-euclid/geoserver/db.json .
-aws s3 cp s3://ai2-euclid/geoserver/media.tar.gz .
+aws s3 cp s3://geosolver-server/dump/89a68dc2de4e87bfc2f09ad41ef25a1b1911dd60/labels.json .
+aws s3 cp s3://geosolver-server/dump/89a68dc2de4e87bfc2f09ad41ef25a1b1911dd60/questions.json .
+aws s3 cp s3://geosolver-server/dump/89a68dc2de4e87bfc2f09ad41ef25a1b1911dd60/media.tar.gz .
 tar -xvzf media.tar.gz
 python manage.py migrate --settings=geoserver.settings.local
-python manage.py loaddata db.json --settings=geoserver.settings.local
-export PYTHONPATH=~/geosolver:~/EquationTree:~/usr/local/lib/python2.7/dist-packages; python manage.py runserver 0:8080 --settings=geoserver.settings.local
+python manage.py loaddata questions.json --settings=geoserver.settings.local
+python manage.py loaddata labels.json --settings=geoserver.settings.local
+# python manage.py loaddata semantics.json --settings=geoserver.settings.local
+export PYTHONPATH=~/geosolver:~/EquationTree:~/usr/local/lib/python2.7/dist-packages; nohup python manage.py runserver 0:8080 --settings=geoserver.settings.local 2>&1 > log.txt &
 EOF
 
