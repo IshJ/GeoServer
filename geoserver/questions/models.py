@@ -105,18 +105,23 @@ class Question(models.Model):
     def get_absolute_url(self):
         return reverse('questions-detail', kwargs={'slug': self.pk})
     
-    def repr(self, request=None):
-        choices = dict([(choice.number,choice.text) for choice in self.choices.all()])
+    def dict(self, request=None):
         if request is None:
             diagram_url = self.diagram.url
         else:
             diagram_url = request.build_absolute_uri(self.diagram.url)
         return {'pk': self.pk,
                 'text': self.text,
-                'words': {sentence.index: {word.index: word.text for word in sentence.words.all()} for sentence in self.sentences.all()},
+                'sentence_words': {sentence.index: {word.index: word.text for word in sentence.words.all()} for sentence in self.sentences.all()},
                 'diagram_url': diagram_url,
                 'has_choices': self.has_choices,
                 'valid': self.valid,
                 'answer': self.answer,
-                'choices': choices,
+                'choice_words': {choice.number: {word.index: word.text for word in choice.words.all()}
+                                 for choice in self.choices.all()},
+                'sentence_expressions': {sentence.index: {expr.index: expr.text for expr in sentence.expressions.all()}
+                                         for sentence in self.sentences.all()},
+                'choice_expressions': {choice.number: {expr.index: expr.text for expr in choice.expressions.all()}
+                                       for choice in self.choices.all()},
+                'choices': {choice.number: choice.text for choice in self.choices.all()},
                 }

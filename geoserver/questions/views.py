@@ -1,13 +1,14 @@
 from operator import or_
 import re
 from django.core.urlresolvers import reverse
+from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.http.response import JsonResponse
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DeleteView, CreateView, UpdateView, \
     View, DetailView
 
-from questions.forms import QuestionForm, ChoiceForm, ChoiceLimitedForm
+from questions.forms import QuestionForm, ChoiceForm, ChoiceLimitedForm, TagForm
 from questions.internal import reset_question
 from questions.models import Question, QuestionTag, Sentence, SentenceWord, Choice
 
@@ -16,13 +17,13 @@ from questions.models import Question, QuestionTag, Sentence, SentenceWord, Choi
 
 def _get_queries(string):
     query_strings = string.split('+')
-    pk_queries = []
-    tag_queries = []
+    pk_queries = set()
+    tag_queries = set()
     for query_string in query_strings:
         if re.match("^\d+$", query_string):
-            pk_queries.append(query_string)
+            pk_queries.add(query_string)
         else:
-            tag_queries.append(get_object_or_404(QuestionTag, word=query_string))
+            tag_queries.add(get_object_or_404(QuestionTag, word=query_string))
     return pk_queries, tag_queries
 
 
@@ -33,6 +34,7 @@ def _filter_questions(pk_queries, tag_queries):
     for tag in tag_queries:
         generators.append(Question.objects.filter(tags=tag, valid=True))
     questions = reduce(or_, generators[1:], generators[0])
+    questions = questions.order_by('pk')
     return questions
 
 
@@ -104,11 +106,7 @@ class QuestionUploadView(View):
             if request.POST['html'] == 'false':
                 return HttpResponse(str(this.pk))
             else:
-                data = {'title': 'Success',
-                        'message': 'Question uploaded successfully.',
-                        'link': reverse('questions-list'),
-                        'linkdes': 'Go to question list page.'}
-                return render(request, 'result.html', data)
+                return redirect(request.POST['next'])
         else:
             # Do nothing
             
@@ -124,7 +122,8 @@ class QuestionUploadView(View):
 
     def get(self, request):
         form = QuestionForm()
-        data = {'form': form, 'title':'Upload a question'}
+        data = {'title': 'upload a question', 'form': form,
+                'next': request.META['HTTP_REFERER']}
         return  render(request, 'upload_form.html', data)
 
 class ChoiceUploadView(View):
@@ -176,7 +175,7 @@ class QuestionDownloadView(View):
         else:
             p, t = _get_queries(query)
             objects = _filter_questions(p, t)
-        data = [question.repr(request) for question in objects]
+        data = [question.dict(request) for question in objects]
         return JsonResponse(data, safe=False)
 
 
@@ -186,11 +185,11 @@ class QuestionUpdateView(View):
         question_form = QuestionForm(prefix=slug, instance=question)
         choice_forms = [ChoiceLimitedForm(prefix=choice.pk, instance=choice)
                         for choice in Choice.objects.filter(question=question)]
-        data = {'title': 'Update a question', 'question_form': question_form, 'choice_forms': choice_forms}
+        data = {'title': 'Update a question', 'question_form': question_form, 'choice_forms': choice_forms,
+                'next': request.META['HTTP_REFERER']}
         return render(request, 'questions/question_update_form.html', data)
 
     def post(self, request, slug):
-        print(request.POST['next'])
         question = Question.objects.get(pk=slug)
         question_form = QuestionForm(request.POST, prefix=slug, instance=question)
         choice_forms = [ChoiceLimitedForm(request.POST, prefix=choice.pk, instance=choice)
@@ -200,13 +199,7 @@ class QuestionUpdateView(View):
             for form in choice_forms: form.save()
 
             reset_question(question)
-
-            kwargs = {'query': 'all'}
-            data = {'title': 'Success',
-                    'message': 'Question updated successfully.',
-                    'link': reverse('questions-list', kwargs=kwargs),
-                    'linkdes': 'Go to the question list page',}
-            return render(request, 'result.html', data)
+            return redirect(request.POST['next'])
         else:
             kwargs = {'slug': slug}
             data = {'title': 'Failure',
@@ -249,11 +242,17 @@ class QuestionDetailView(DetailView):
     model = Question
     context_object_name = 'question'
     slug_field = 'pk'
-    
-        
-class TagCreateView(CreateView):
-    '''
-    Create a new tag
-    '''
-    model = QuestionTag
-    fields = ['word']
+
+class TagCreateView(View):
+    def post(self, request):
+        form = TagForm(request.POST, request.FILES)
+        print request.POST
+        if form.is_valid():
+            this = form.save()
+            return HttpResponse(str(this.pk))
+        else:
+            return HttpResponse('-1')
+
+    def get(self, request):
+        form = TagForm()
+        return  render(request, 'upload_form.html', {'form': form, 'title': 'Upload tag'})
